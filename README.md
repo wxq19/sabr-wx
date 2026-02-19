@@ -60,18 +60,12 @@ Then open:
 
 ## 4) Data format notes
 
-The collector supports both:
+The collector currently supports simple line formats like:
 
-- Compact CSV format: `T=23.4,H=56.1,P=1012.8`
-- AMWS multiline frames that contain keys like `TA:22.4`, `BA:1001.90`, `RH:50` and end with `~`
+- `T=23.4,H=56.1,P=1012.8`
+- `temperature=23.4,humidity=56.1,pressure=1012.8`
 
-For your sample payload (MWS v0.98), the collector will read:
-
-- `TA` as temperature (°C)
-- `RH` as humidity (%)
-- `BA` as pressure (hPa)
-
-If your station output differs, run with raw logging:
+If your station outputs a different format, run with raw logging:
 
 ```bash
 WEATHER_PORT=/dev/ttyUSB0 WEATHER_LOG_RAW=1 python collector.py

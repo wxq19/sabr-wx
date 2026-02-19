@@ -65,6 +65,12 @@ The collector currently supports simple line formats like:
 - `T=23.4,H=56.1,P=1012.8`
 - `temperature=23.4,humidity=56.1,pressure=1012.8`
 
+And AMWS/MWS multiline packets that end in `SND`, using:
+
+- `TA:<temp_c>`
+- `RH:<humidity_pct>`
+- `BA:<pressure_hpa>`
+
 If your station outputs a different format, run with raw logging:
 
 ```bash

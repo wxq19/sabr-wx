@@ -55,6 +55,33 @@ def parse_line(line: str) -> dict:
     }
 
 
+def parse_mws_message(message: str) -> dict:
+    """Parse AMWS/MWS multiline payload ending with SND.
+
+    Expected fields:
+    - TA:<temp_c>
+    - RH:<humidity_pct>
+    - BA:<pressure_hpa>
+    """
+    values: Dict[str, str] = {}
+    for raw_line in message.splitlines():
+        line = raw_line.strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        key = key.strip().upper()
+        value = value.strip()
+        if key in {"TA", "RH", "BA"}:
+            values[key] = value
+
+    return {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "temperature_c": float(values["TA"]),
+        "humidity_pct": float(values["RH"]),
+        "pressure_hpa": float(values["BA"]),
+    }
+
+
 def write_atomic(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -65,6 +92,7 @@ def write_atomic(path: Path, payload: dict) -> None:
 def main() -> None:
     print(f"[collector] reading {PORT} @ {BAUD}, writing {OUT_FILE}")
     with serial.Serial(PORT, BAUD, timeout=2) as ser:
+        mws_buffer: list[str] = []
         while True:
             raw = ser.readline().decode(errors="ignore").strip()
             if not raw:
@@ -74,7 +102,16 @@ def main() -> None:
                 print(f"[raw] {raw}")
 
             try:
-                sample = parse_line(raw)
+                if raw == "SND":
+                    message = "\n".join(mws_buffer)
+                    mws_buffer.clear()
+                    sample = parse_mws_message(message)
+                elif mws_buffer or raw.startswith("MWS"):
+                    mws_buffer.append(raw)
+                    time.sleep(POLL_SLEEP_S)
+                    continue
+                else:
+                    sample = parse_line(raw)
                 write_atomic(OUT_FILE, sample)
                 print(f"[ok] {sample}")
             except Exception as exc:  # keep collector resilient
